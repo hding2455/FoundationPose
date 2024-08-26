@@ -247,11 +247,15 @@ class FoundationPose:
     return -torch.ones(len(poses), device='cuda', dtype=torch.float)
 
 
-  def track_one(self, rgb, depth, K, iteration, extra={}):
+  def track_one(self, rgb, depth, K, ob_mask, iteration, extra={}):
     if self.pose_last is None:
       logging.info("Please init pose by register first")
       raise RuntimeError
     logging.info("Welcome")
+
+    center = self.guess_translation(depth=depth, mask=ob_mask, K=K)
+    poses = self.pose_last.data.cpu().numpy().reshape(1,4,4)
+    poses[0,:3,3] = (poses[0,:3,3] + center.reshape(3)) / 2.0
 
     depth = torch.as_tensor(depth, device='cuda', dtype=torch.float)
     depth = erode_depth(depth, radius=2, device='cuda')
@@ -260,7 +264,7 @@ class FoundationPose:
 
     xyz_map = depth2xyzmap_batch(depth[None], torch.as_tensor(K, dtype=torch.float, device='cuda')[None], zfar=np.inf)[0]
 
-    pose, vis = self.refiner.predict(mesh=self.mesh, mesh_tensors=self.mesh_tensors, rgb=rgb, depth=depth, K=K, ob_in_cams=self.pose_last.reshape(1,4,4).data.cpu().numpy(), normal_map=None, xyz_map=xyz_map, mesh_diameter=self.diameter, glctx=self.glctx, iteration=iteration, get_vis=self.debug>=2)
+    pose, vis = self.refiner.predict(mesh=self.mesh, mesh_tensors=self.mesh_tensors, rgb=rgb, depth=depth, K=K, ob_in_cams=poses, normal_map=None, xyz_map=xyz_map, mesh_diameter=self.diameter, glctx=self.glctx, iteration=iteration, get_vis=self.debug>=2)
     logging.info("pose done")
     if self.debug>=2:
       extra['vis'] = vis
