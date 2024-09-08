@@ -147,6 +147,7 @@ class FoundationPose:
       return np.zeros((3))
 
     zc = np.median(depth[valid])
+    #zc = np.mean(depth[valid])
     center = (np.linalg.inv(K)@np.asarray([uc,vc,1]).reshape(3,1))*zc
 
     if self.debug>=2:
@@ -253,9 +254,10 @@ class FoundationPose:
       raise RuntimeError
     logging.info("Welcome")
 
-    center = self.guess_translation(depth=depth, mask=ob_mask, K=K)
     poses = self.pose_last.data.cpu().numpy().reshape(1,4,4)
-    poses[0,:3,3] = (poses[0,:3,3] + center.reshape(3)) / 2.0
+    if ob_mask is not None:
+      center = self.guess_translation(depth=depth, mask=ob_mask, K=K)
+      poses[0,:3,3] = (poses[0,:3,3] + center.reshape(3)) / 2.0
 
     depth = torch.as_tensor(depth, device='cuda', dtype=torch.float)
     depth = erode_depth(depth, radius=2, device='cuda')

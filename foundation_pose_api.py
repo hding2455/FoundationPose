@@ -34,6 +34,7 @@ class PoseEstimator:
         mesh = trimesh.load(mesh_file)
         mesh.apply_scale(0.001)
         self.to_origin, extents = trimesh.bounds.oriented_bounds(mesh)
+        logging.info(self.to_origin)
         self.bbox = np.stack([-extents/2, extents/2], axis=0).reshape(2,3)
         # scorer = ScorePredictor()
         # refiner = PoseRefinePredictor()
@@ -78,9 +79,11 @@ def pose_estimation():
     K = decode_ndarray(request.json.get('K'))
     image = decode_ndarray(request.json.get('image'))
     depth = decode_ndarray(request.json.get('depth'))
-    segmentation = decode_ndarray(request.json.get('segmentation'))
+    if request.json.get('segmentation') is not None:
+        segmentation = decode_ndarray(request.json.get('segmentation'))
+    else:
+        segmentation = None
     register = request.json.get('register')
-    logging.info(K, image[0,0], depth[0,0], segmentation[0,0])
     pose, vis = estimators[label].pose_estimation(K, image, depth / 1e3, segmentation, register=register, visualize=True)
     results = {"pose": encode_ndarray(pose), "vis": encode_ndarray(vis)}
     return results
